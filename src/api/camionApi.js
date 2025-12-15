@@ -2,6 +2,7 @@ const BASE = import.meta.env.VITE_API;
 
 export async function fetchCamions(token) {
   const res = await fetch(`${BASE}/camions`, {
+    
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();

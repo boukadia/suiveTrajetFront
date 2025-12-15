@@ -19,7 +19,10 @@ export default function MaintenanceDashboard() {
     remorque: "",
     pneu: "",
     dateMaintenance: "",
-    description: ""
+    description: "",
+    kilometrage: "",
+    cout: "",
+    statut: "Prévu"
   });
   
   const [editingId, setEditingId] = useState(null);
@@ -65,7 +68,10 @@ export default function MaintenanceDashboard() {
         remorque: "",
         pneu: "",
         dateMaintenance: "",
-        description: ""
+        description: "",
+        kilometrage: "",
+        cout: "",
+        statut: "Prévu"
       });
     } catch (err) {
       setError("Erreur lors de l'ajout");
@@ -164,7 +170,7 @@ export default function MaintenanceDashboard() {
               >
                 <option value="">Remorque (optionnel)</option>
                 {remorques.map(r => (
-                  <option key={r._id} value={r._id}>{r.matricule}</option>
+                  <option key={r._id} value={r._id}>{r.numeroImmatriculation}</option>
                 ))}
               </select>
             </div>
@@ -177,7 +183,7 @@ export default function MaintenanceDashboard() {
               >
                 <option value="">Pneu (optionnel)</option>
                 {pneus.map(p => (
-                  <option key={p._id} value={p._id}>{p.numeroSerie}</option>
+                  <option key={p._id} value={p._id}>{p.marque} {p.modele}</option>
                 ))}
               </select>
             </div>
@@ -186,8 +192,30 @@ export default function MaintenanceDashboard() {
               <input 
                 type="date" 
                 className="form-control" 
+                placeholder="Date"
                 value={newMaintenance.dateMaintenance}
                 onChange={e => setNewMaintenance({...newMaintenance, dateMaintenance: e.target.value})}
+              />
+            </div>
+
+            <div className="col-md-2">
+              <input 
+                type="number" 
+                className="form-control" 
+                placeholder="Kilométrage"
+                value={newMaintenance.kilometrage}
+                onChange={e => setNewMaintenance({...newMaintenance, kilometrage: e.target.value})}
+              />
+            </div>
+
+            <div className="col-md-2">
+              <input 
+                type="number" 
+                step="0.01"
+                className="form-control" 
+                placeholder="Coût (€)"
+                value={newMaintenance.cout}
+                onChange={e => setNewMaintenance({...newMaintenance, cout: e.target.value})}
               />
             </div>
 
@@ -221,10 +249,10 @@ export default function MaintenanceDashboard() {
               <thead className="table-dark">
                 <tr>
                   <th>Type</th>
-                  <th>Camion</th>
-                  <th>Remorque</th>
-                  <th>Pneu</th>
+                  <th>Véhicule</th>
                   <th>Date</th>
+                  <th>Km</th>
+                  <th>Coût</th>
                   <th>Description</th>
                   <th>Statut</th>
                   <th>Actions</th>
@@ -256,9 +284,9 @@ export default function MaintenanceDashboard() {
                           m.typeMaintenance
                         )}
                       </td>
-                      <td>{m.camion?.numeroImmatriculation || "-"}</td>
-                      <td>{m.remorque?.matricule || "-"}</td>
-                      <td>{m.pneu?.numeroSerie || "-"}</td>
+                      <td>
+                        {m.camion?.numeroImmatriculation || m.remorque?.numeroImmatriculation || m.pneu ? `Pneu ${m.pneu.marque}` : "-"}
+                      </td>
                       <td>
                         {editingId === m._id ? (
                           <input 
@@ -271,6 +299,8 @@ export default function MaintenanceDashboard() {
                           new Date(m.dateMaintenance).toLocaleDateString()
                         )}
                       </td>
+                      <td>{m.kilometrage || "-"}</td>
+                      <td>{m.cout ? `${m.cout} €` : "-"}</td>
                       <td>
                         {editingId === m._id ? (
                           <input 
@@ -290,9 +320,9 @@ export default function MaintenanceDashboard() {
                           onChange={e => handleStatutChange(m._id, e.target.value)}
                           disabled={editingId === m._id}
                         >
-                          <option value="En attente">En attente</option>
-                          <option value="En cours">En cours</option>
-                          <option value="Terminé">Terminé</option>
+                          <option value="Prévu">Prévu</option>
+                          <option value="Effectuée">Effectuée</option>
+                          <option value="Annulée">Annulée</option>
                         </select>
                       </td>
                       <td>

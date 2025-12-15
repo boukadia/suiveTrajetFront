@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { fetchPneus, addPneu, updatePneu, deletePneu } from "../../api/pneuApi";
+import { fetchCamions } from "../../api/camionApi";
 
 export default function PneuDashboard() {
   const token = localStorage.getItem("token");
   const [pneus, setPneus] = useState([]);
+  const [camions, setCamions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [newPneu, setNewPneu] = useState({ numeroSerie: "", marque: "", dimension: "" });
+  const [newPneu, setNewPneu] = useState({ marque: "", modele: "", kilometrageInstallation: "", dateInstallation: "", status: "Neuf", camion: "" });
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
   useEffect(() => {
-    loadPneus();
+    loadData();
   }, [token]);
 
-  const loadPneus = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await fetchPneus(token);
-      setPneus(data);
+      const [pneusData, camionsData] = await Promise.all([
+        fetchPneus(token),
+        fetchCamions(token)
+      ]);
+      setPneus(pneusData);
+      setCamions(camionsData);
       setError("");
     } catch (err) {
       setError("Erreur lors du chargement");
@@ -28,14 +34,14 @@ export default function PneuDashboard() {
   };
 
   const handleAdd = async () => {
-    if (!newPneu.numeroSerie || !newPneu.marque || !newPneu.dimension) {
-      alert("Veuillez remplir tous les champs");
+    if (!newPneu.marque || !newPneu.modele) {
+      alert("Veuillez remplir les champs obligatoires");
       return;
     }
     try {
       const data = await addPneu(newPneu, token);
       setPneus(prev => [...prev, data]);
-      setNewPneu({ numeroSerie: "", marque: "", dimension: "" });
+      setNewPneu({ marque: "", modele: "", kilometrageInstallation: "", dateInstallation: "", status: "Neuf", camion: "" });
     } catch (err) {
       setError("Erreur lors de l'ajout");
     }
@@ -43,7 +49,14 @@ export default function PneuDashboard() {
 
   const startEdit = (pneu) => {
     setEditingId(pneu._id);
-    setEditData({ numeroSerie: pneu.numeroSerie, marque: pneu.marque, dimension: pneu.dimension });
+    setEditData({ 
+      marque: pneu.marque, 
+      modele: pneu.modele,
+      kilometrageInstallation: pneu.kilometrageInstallation || "",
+      dateInstallation: pneu.dateInstallation ? new Date(pneu.dateInstallation).toISOString().slice(0, 10) : "",
+      status: pneu.status || "Neuf",
+      camion: pneu.camion?._id || ""
+    });
   };
 
   const saveEdit = async (id) => {
@@ -76,18 +89,40 @@ export default function PneuDashboard() {
       <div className="card mb-4">
         <div className="card-body">
           <h5 className="card-title">Ajouter un pneu</h5>
-          <div className="row g-2">
+          <div className="row g-3">
             <div className="col-md-3">
-              <input type="text" className="form-control" placeholder="Numéro Série" value={newPneu.numeroSerie} onChange={e => setNewPneu({...newPneu, numeroSerie:e.target.value})} />
+              <label className="form-label">Marque *</label>
+              <input type="text" className="form-control" value={newPneu.marque} onChange={e => setNewPneu({...newPneu, marque:e.target.value})} />
             </div>
             <div className="col-md-3">
-              <input type="text" className="form-control" placeholder="Marque" value={newPneu.marque} onChange={e => setNewPneu({...newPneu, marque:e.target.value})} />
+              <label className="form-label">Modèle *</label>
+              <input type="text" className="form-control" value={newPneu.modele} onChange={e => setNewPneu({...newPneu, modele:e.target.value})} />
             </div>
             <div className="col-md-3">
-              <input type="text" className="form-control" placeholder="Dimension" value={newPneu.dimension} onChange={e => setNewPneu({...newPneu, dimension:e.target.value})} />
+              <label className="form-label">Kilométrage Installation</label>
+              <input type="number" className="form-control" value={newPneu.kilometrageInstallation} onChange={e => setNewPneu({...newPneu, kilometrageInstallation:e.target.value})} />
             </div>
             <div className="col-md-3">
-              <button className="btn btn-primary w-100" onClick={handleAdd}>Ajouter</button>
+              <label className="form-label">Date Installation</label>
+              <input type="date" className="form-control" value={newPneu.dateInstallation} onChange={e => setNewPneu({...newPneu, dateInstallation:e.target.value})} />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label">État</label>
+              <select className="form-select" value={newPneu.status} onChange={e => setNewPneu({...newPneu, status:e.target.value})}>
+                <option value="Neuf">Neuf</option>
+                <option value="Usé">Usé</option>
+                <option value="A remplacer">A remplacer</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label">Camion</label>
+              <select className="form-select" value={newPneu.camion} onChange={e => setNewPneu({...newPneu, camion:e.target.value})}>
+                <option value="">-- Aucun --</option>
+                {camions.map(c => <option key={c._id} value={c._id}>{c.numeroImmatriculation}</option>)}
+              </select>
+            </div>
+            <div className="col-12">
+              <button className="btn btn-primary" onClick={handleAdd}>Ajouter</button>
             </div>
           </div>
         </div>
@@ -100,21 +135,27 @@ export default function PneuDashboard() {
             <table className="table table-striped table-hover">
               <thead className="table-dark">
                 <tr>
-                  <th>Numéro Série</th>
                   <th>Marque</th>
-                  <th>Dimension</th>
+                  <th>Modèle</th>
+                  <th>Km Installation</th>
+                  <th>Date Installation</th>
+                  <th>État</th>
+                  <th>Camion</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pneus.length === 0 ? (
-                  <tr><td colSpan="4" className="text-center">Aucun pneu trouvé</td></tr>
+                  <tr><td colSpan="7" className="text-center">Aucun pneu trouvé</td></tr>
                 ) : (
                   pneus.map(p => (
                     <tr key={p._id}>
-                      <td>{editingId === p._id ? <input type="text" className="form-control form-control-sm" value={editData.numeroSerie} onChange={e => setEditData({...editData, numeroSerie: e.target.value})} /> : p.numeroSerie}</td>
                       <td>{editingId === p._id ? <input type="text" className="form-control form-control-sm" value={editData.marque} onChange={e => setEditData({...editData, marque: e.target.value})} /> : p.marque}</td>
-                      <td>{editingId === p._id ? <input type="text" className="form-control form-control-sm" value={editData.dimension} onChange={e => setEditData({...editData, dimension: e.target.value})} /> : p.dimension}</td>
+                      <td>{editingId === p._id ? <input type="text" className="form-control form-control-sm" value={editData.modele} onChange={e => setEditData({...editData, modele: e.target.value})} /> : p.modele}</td>
+                      <td>{p.kilometrageInstallation || '-'}</td>
+                      <td>{p.dateInstallation ? new Date(p.dateInstallation).toLocaleDateString() : '-'}</td>
+                      <td><span className={`badge bg-${p.status === 'Neuf' ? 'success' : p.status === 'Usé' ? 'warning' : 'danger'}`}>{p.status}</span></td>
+                      <td>{p.camion?.numeroImmatriculation || '-'}</td>
                       <td>
                         {editingId === p._id ? (
                           <div className="btn-group btn-group-sm">

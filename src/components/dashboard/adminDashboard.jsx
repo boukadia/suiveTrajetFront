@@ -23,39 +23,46 @@ export default function AdminDashboard() {
 
   const loadStatistics = async () => {
     try {
-      const [camions, remorques, pneus, trajets, maintenances] = await Promise.all([
-        fetchCamions(),
-        fetchRemorques(),
-        fetchPneus(),
-        fetchTrajets(),
-        fetchMaintenances()
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found");
+        return;
+      }
+      const [camions, remorques, pneus, trajets, maintenances] = ([
+       await fetchCamions(token),
+       await fetchRemorques(token),
+       await fetchPneus(token),
+       await fetchTrajets(token),
+       await fetchMaintenances(token)
       ]);
 
       setStats({
         camions: {
           total: camions.length,
-          actifs: camions.filter(c => c.statut === "Actif").length,
-          enMaintenance: camions.filter(c => c.statut === "En maintenance").length
+          actifs: camions.filter(c => c.status === "En trajet").length,
+          disponibles: camions.filter(c => c.status === "Disponible").length,
+          enMaintenance: camions.filter(c => c.status === "En maintenance").length
         },
         remorques: {
           total: remorques.length,
-          actifs: remorques.filter(r => r.statut === "Actif").length,
-          enMaintenance: remorques.filter(r => r.statut === "En maintenance").length
+          actifs: remorques.filter(r => r.status === "En trajet").length,
+          disponibles: remorques.filter(r => r.status === "Disponible").length,
+          enMaintenance: remorques.filter(r => r.status === "En maintenance").length
         },
         pneus: {
           total: pneus.length,
-          neufs: pneus.filter(p => p.etat === "Neuf").length,
-          uses: pneus.filter(p => p.etat === "Usé").length
+          neufs: pneus.filter(p => p.status === "Neuf").length,
+          uses: pneus.filter(p => p.status === "Usé").length
         },
         trajets: {
           total: trajets.length,
-          enCours: trajets.filter(t => t.statut === "En cours").length,
-          termines: trajets.filter(t => t.statut === "Terminé").length
+          enCours: trajets.filter(t => t.status === "En cours").length,
+          termines: trajets.filter(t => t.status === "Terminé").length
         },
         maintenances: {
           total: maintenances.length,
-          enCours: maintenances.filter(m => m.statut === "En cours").length,
-          terminees: maintenances.filter(m => m.statut === "Terminée").length
+          enCours: maintenances.filter(m => m.status === "En cours").length,
+          terminees: maintenances.filter(m => m.status === "Terminée").length
         }
       });
     } catch (error) {
@@ -73,6 +80,7 @@ export default function AdminDashboard() {
       total: stats.camions.total,
       details: [
         { label: "Actifs", value: stats.camions.actifs, color: "#10b981" },
+        {label: "Disponibles", value: stats.camions.disponibles, color: "#6b7280" },
         { label: "En maintenance", value: stats.camions.enMaintenance, color: "#f59e0b" }
       ],
       path: "/dashboard/camions"
@@ -84,6 +92,9 @@ export default function AdminDashboard() {
       total: stats.remorques.total,
       details: [
         { label: "Actifs", value: stats.remorques.actifs, color: "#10b981" },
+        {label: "Disponibles", value: stats.remorques.disponibles, color: "#6b7280" },
+
+
         { label: "En maintenance", value: stats.remorques.enMaintenance, color: "#f59e0b" }
       ],
       path: "/dashboard/remorques"
@@ -123,6 +134,8 @@ export default function AdminDashboard() {
     }
   ];
 
+  console.log("camionslen",setStats.camions);
+  
   if (loading) {
     return (
       <div className="text-center py-5">

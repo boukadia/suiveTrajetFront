@@ -6,7 +6,7 @@ export default function RemorqueDashboard() {
   const [remorques, setRemorques] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [newRemorque, setNewRemorque] = useState({ matricule: "", marque: "", modele: "" });
+  const [newRemorque, setNewRemorque] = useState({ numeroImmatriculation: "", type: "", capacite: "", kilometrage: 0, dernierControleKm: "", dernierControleDate: "" });
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
@@ -28,14 +28,14 @@ export default function RemorqueDashboard() {
   };
 
   const handleAdd = async () => {
-    if (!newRemorque.matricule || !newRemorque.marque || !newRemorque.modele) {
-      alert("Veuillez remplir tous les champs");
+    if (!newRemorque.numeroImmatriculation || !newRemorque.type) {
+      alert("Veuillez remplir les champs obligatoires");
       return;
     }
     try {
       const data = await addRemorque(newRemorque, token);
       setRemorques(prev => [...prev, data]);
-      setNewRemorque({ matricule: "", marque: "", modele: "" });
+      setNewRemorque({ numeroImmatriculation: "", type: "", capacite: "", kilometrage: 0, dernierControleKm: "", dernierControleDate: "" });
     } catch (err) {
       setError("Erreur lors de l'ajout");
     }
@@ -43,7 +43,14 @@ export default function RemorqueDashboard() {
 
   const startEdit = (remorque) => {
     setEditingId(remorque._id);
-    setEditData({ matricule: remorque.matricule, marque: remorque.marque, modele: remorque.modele });
+    setEditData({ 
+      numeroImmatriculation: remorque.numeroImmatriculation, 
+      type: remorque.type, 
+      capacite: remorque.capacite || "",
+      kilometrage: remorque.kilometrage || 0,
+      dernierControleKm: remorque.dernierControleKm || "",
+      dernierControleDate: remorque.dernierControleDate ? new Date(remorque.dernierControleDate).toISOString().slice(0, 10) : ""
+    });
   };
 
   const saveEdit = async (id) => {
@@ -68,6 +75,7 @@ export default function RemorqueDashboard() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
+      
       const updated = await changeStatusRemorque(id, newStatus, token);
       setRemorques(prev => prev.map(r => r._id === id ? updated : r));
     } catch (err) {
@@ -85,18 +93,33 @@ export default function RemorqueDashboard() {
       <div className="card mb-4">
         <div className="card-body">
           <h5 className="card-title">Ajouter une remorque</h5>
-          <div className="row g-2">
+          <div className="row g-3">
             <div className="col-md-3">
-              <input type="text" className="form-control" placeholder="Matricule" value={newRemorque.matricule} onChange={e => setNewRemorque({...newRemorque, matricule:e.target.value})} />
+              <label className="form-label">Numéro Immatriculation *</label>
+              <input type="text" className="form-control" value={newRemorque.numeroImmatriculation} onChange={e => setNewRemorque({...newRemorque, numeroImmatriculation:e.target.value})} />
             </div>
             <div className="col-md-3">
-              <input type="text" className="form-control" placeholder="Marque" value={newRemorque.marque} onChange={e => setNewRemorque({...newRemorque, marque:e.target.value})} />
+              <label className="form-label">Type *</label>
+              <input type="text" className="form-control" value={newRemorque.type} onChange={e => setNewRemorque({...newRemorque, type:e.target.value})} />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">Capacité (T)</label>
+              <input type="number" className="form-control" value={newRemorque.capacite} onChange={e => setNewRemorque({...newRemorque, capacite:e.target.value})} />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">Kilométrage</label>
+              <input type="number" className="form-control" value={newRemorque.kilometrage} onChange={e => setNewRemorque({...newRemorque, kilometrage:Number(e.target.value)})} />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">Dernier Contrôle (Km)</label>
+              <input type="number" className="form-control" value={newRemorque.dernierControleKm} onChange={e => setNewRemorque({...newRemorque, dernierControleKm:e.target.value})} />
             </div>
             <div className="col-md-3">
-              <input type="text" className="form-control" placeholder="Modèle" value={newRemorque.modele} onChange={e => setNewRemorque({...newRemorque, modele:e.target.value})} />
+              <label className="form-label">Date Contrôle</label>
+              <input type="date" className="form-control" value={newRemorque.dernierControleDate} onChange={e => setNewRemorque({...newRemorque, dernierControleDate:e.target.value})} />
             </div>
-            <div className="col-md-3">
-              <button className="btn btn-primary w-100" onClick={handleAdd}>Ajouter</button>
+            <div className="col-12">
+              <button className="btn btn-primary" onClick={handleAdd}>Ajouter</button>
             </div>
           </div>
         </div>
@@ -109,26 +132,29 @@ export default function RemorqueDashboard() {
             <table className="table table-striped table-hover">
               <thead className="table-dark">
                 <tr>
-                  <th>Matricule</th>
-                  <th>Marque</th>
-                  <th>Modèle</th>
+                  <th>Immatriculation</th>
+                  <th>Type</th>
+                  <th>Capacité</th>
+                  <th>Kilométrage</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {remorques.length === 0 ? (
-                  <tr><td colSpan="5" className="text-center">Aucune remorque trouvée</td></tr>
+                  <tr><td colSpan="6" className="text-center">Aucune remorque trouvée</td></tr>
                 ) : (
                   remorques.map(r => (
                     <tr key={r._id}>
-                      <td>{editingId === r._id ? <input type="text" className="form-control form-control-sm" value={editData.matricule} onChange={e => setEditData({...editData, matricule: e.target.value})} /> : r.matricule}</td>
-                      <td>{editingId === r._id ? <input type="text" className="form-control form-control-sm" value={editData.marque} onChange={e => setEditData({...editData, marque: e.target.value})} /> : r.marque}</td>
-                      <td>{editingId === r._id ? <input type="text" className="form-control form-control-sm" value={editData.modele} onChange={e => setEditData({...editData, modele: e.target.value})} /> : r.modele}</td>
+                      <td>{editingId === r._id ? <input type="text" className="form-control form-control-sm" value={editData.numeroImmatriculation} onChange={e => setEditData({...editData, numeroImmatriculation: e.target.value})} /> : r.numeroImmatriculation}</td>
+                      <td>{editingId === r._id ? <input type="text" className="form-control form-control-sm" value={editData.type} onChange={e => setEditData({...editData, type: e.target.value})} /> : r.type}</td>
+                      <td>{editingId === r._id ? <input type="number" className="form-control form-control-sm" value={editData.capacite} onChange={e => setEditData({...editData, capacite: e.target.value})} /> : (r.capacite || '-')}</td>
+                      <td>{editingId === r._id ? <input type="number" className="form-control form-control-sm" value={editData.kilometrage} onChange={e => setEditData({...editData, kilometrage: Number(e.target.value)})} /> : (r.kilometrage || 0)}</td>
                       <td>
                         <select className="form-select form-select-sm" value={r.status} onChange={e => handleStatusChange(r._id, e.target.value)} disabled={editingId === r._id}>
                           <option value="Disponible">Disponible</option>
-                          <option value="En route">En route</option>
+                          <option value="Hors Service">Hors Service</option>
+                          <option value="En trajet">En trajet</option>
                           <option value="En maintenance">En maintenance</option>
                         </select>
                       </td>
