@@ -46,6 +46,8 @@ export default function MaintenanceDashboard() {
       setRemorques(remorquesData);
       setPneus(pneusData);
       setError("");
+console.log("eee",maintenancesData);
+
     } catch (err) {
       setError("Erreur lors du chargement");
       console.error(err);
@@ -273,12 +275,12 @@ export default function MaintenanceDashboard() {
                             value={editData.typeMaintenance}
                             onChange={e => setEditData({...editData, typeMaintenance: e.target.value})}
                           >
-                            <option value="Révision">Révision</option>
-                            <option value="Réparation">Réparation</option>
-                            <option value="Changement pneu">Changement pneu</option>
+                            {/* <option value="Révision">Révision</option> */}
+                            {/* <option value="Réparation">Réparation</option> */}
+                            <option value="Pneu">Changement pneu</option>
                             <option value="Vidange">Vidange</option>
-                            <option value="Contrôle technique">Contrôle technique</option>
-                            <option value="Autre">Autre</option>
+                            {/* <option value="Contrôle technique">Contrôle technique</option> */}
+                            {/* <option value="Autre">Autre</option> */}
                           </select>
                         ) : (
                           m.typeMaintenance

@@ -215,17 +215,7 @@ export default function CamionDashboard() {
           <h5 className="card-title">Liste des camions ({camions.length})</h5>
           <div className="table-responsive">
             <table className="table table-striped table-hover">
-              <thead className="table-dark">
-                <tr>
-                  <th>Immatriculation</th>
-                  <th>Marque</th>
-                  <th>Modèle</th>
-                  <th>Kilométrage</th>
-                  <th>Consommation</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+             
               <thead className="table-dark">
                 <tr>
                   <th>Immatriculation</th>

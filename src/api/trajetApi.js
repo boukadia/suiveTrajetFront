@@ -39,14 +39,18 @@ export async function deleteTrajet(id, token) {
   return res.json();
 }
 
-export async function changeStatutTrajet(id, statut, token) {
-  const res = await fetch(`${BASE}/trajets/statut/${id}`, {
+export async function changeStatutTrajet(id, status, token) {
+  const res = await fetch(`${BASE}/trajets/status/${id}`, {
     method: "PUT",
     headers: { 
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}` 
     },
-    body: JSON.stringify({ statut }),
+    body: JSON.stringify({ status }),
   });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Erreur lors du changement de statut');
+  }
   return res.json();
 }

@@ -40,9 +40,10 @@ export async function deleteRemorque(id, token) {
 }
 
 export async function changeStatusRemorque(id, status, token) {
-  console.log({base: BASE, id, status});
+  const url = `${BASE}/remorques/${id}/status`;
+  console.log('URL complète:', url, 'Status:', status);
   
-  const res = await fetch(`${BASE}/remorques/status/${id}`, {
+  const res = await fetch(url, {
     method: "PUT",
     headers: { 
       "Content-Type": "application/json",

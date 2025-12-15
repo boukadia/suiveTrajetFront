@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from "react";
 import { fetchTrajets, addTrajet, updateTrajet, deleteTrajet, changeStatutTrajet } from "../../api/trajetApi";
-import { fetchCamions } from "../../api/camionApi";
-import { fetchRemorques } from "../../api/remorqueApi";
+import { fetchCamions, changeStatusCamion, updateCamion } from "../../api/camionApi";
+import { fetchRemorques, changeStatusRemorque } from "../../api/remorqueApi";
 import { fetchUsers, updateUserStatus } from "../../api/userApi";
+import { fetchMaintenances, addMaintenance } from "../../api/maintenanceApi";
 import { AuthContext } from "../../context/AuthContext";
 
 export default function TrajetDashboard() {
@@ -22,7 +23,7 @@ export default function TrajetDashboard() {
   const [pointArrivee, setPointArrivee] = useState("");
   const [dateDepart, setDateDepart] = useState("");
   const [dateArrivee, setDateArrivee] = useState("");
-  const [kilometrageDepart, setKilometrageDepart] = useState("");
+  // const [kilometrageDepart, setKilometrageDepart] = useState("");
   const [kilometrageArrivee, setKilometrageArrivee] = useState("");
   const [volumeCarburant, setVolumeCarburant] = useState("");
   const [remarques, setRemarques] = useState("");
@@ -80,7 +81,7 @@ export default function TrajetDashboard() {
       if (remorque) trajetData.remorque = remorque;
       if (dateDepart) trajetData.dateDepart = dateDepart;
       if (dateArrivee) trajetData.dateArrivee = dateArrivee;
-      if (kilometrageDepart) trajetData.kilometrageDepart = Number(kilometrageDepart);
+      // if (kilometrageDepart) trajetData.kilometrageDepart = Number(kilometrageDepart);
       if (kilometrageArrivee) trajetData.kilometrageArrivee = Number(kilometrageArrivee);
       if (volumeCarburant) trajetData.volumeCarburant = Number(volumeCarburant);
       if (remarques) trajetData.remarques = remarques;
@@ -88,15 +89,16 @@ export default function TrajetDashboard() {
       console.log("Données envoyées:", trajetData);
       
       const data = await addTrajet(trajetData, token);
+       await changeStatusCamion(camion, 'En cours', token);
       
       // Tenter d'activer le chauffeur (si l'API existe, sinon ignorer l'erreur)
       try {
-        await updateUserStatus(chauffeur, "active", token);
+        await updateUserStatus(chauffeur, token);
       } catch (statusErr) {
         console.warn("Impossible de mettre à jour le statut du chauffeur:", statusErr);
       }
       
-      setTrajets(prev => [...prev, data]);
+      setTrajets([...trajets, data]);
       
       // Recharger les données pour mettre à jour la liste des chauffeurs
       await loadData();
@@ -109,7 +111,7 @@ export default function TrajetDashboard() {
       setPointArrivee("");
       setDateDepart("");
       setDateArrivee("");
-      setKilometrageDepart("");
+      // setKilometrageDepart("");
       setKilometrageArrivee("");
       setVolumeCarburant("");
       setRemarques("");
@@ -131,7 +133,8 @@ export default function TrajetDashboard() {
   const saveEdit = async (id) => {
     try {
       const updated = await updateTrajet(id, editData, token);
-      setTrajets(prev => prev.map(t => t._id === id ? updated : t));
+      const nouveauxTrajets = trajets.map(t => t._id === id ? updated : t);
+      setTrajets(nouveauxTrajets);
       setEditingId(null);
     } catch (err) {
       setError("Erreur lors de la modification");
@@ -142,18 +145,162 @@ export default function TrajetDashboard() {
     if (!confirm("Êtes-vous sûr ?")) return;
     try {
       await deleteTrajet(id, token);
-      setTrajets(prev => prev.filter(t => t._id !== id));
+      const nouveauxTrajets = trajets.filter(t => t._id !== id);
+      setTrajets(nouveauxTrajets);
     } catch (err) {
       setError("Erreur lors de la suppression");
     }
   };
 
+  const verifierMaintenance = async (trajet) => {
+    try {
+      const maintenances = await fetchMaintenances(token);
+      const camion = trajet.camion;
+      const remorque = trajet.remorque;
+      
+      // Kilométrage actuel après le trajet
+      const kmActuel =  camion?.kilometrage || 0;
+
+      
+      //  console.log("dddddddddddddddd",camion);
+       
+       
+       await updateCamion(camion._id,{kilometrage:camion.kilometrage+(Number(trajet.kilometrageArrivee)-camion.kilometrage)},token);
+      
+      
+      console.log("Vérification maintenance - Km actuel:", kmActuel, "Camion:", camion?._id);
+      
+      // Vérifier maintenance camion
+      if (camion && camion._id) {
+        // Trouver dernière maintenance vidange
+        const derniereVidange = maintenances
+          .filter(m => m.camion?._id === camion._id && m.typeMaintenance === 'Vidange')
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        
+        // Trouver dernière maintenance pneu
+        const dernierPneu = maintenances
+          .filter(m => m.camion?._id === camion._id && m.typeMaintenance === 'Pneu')
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+          console.log('drnpn',dernierPneu);
+          
+        
+        const kmDepuisVidange = kmActuel - (derniereVidange?.kilometrage || 0);
+        const kmDepuisPneu = kmActuel - (dernierPneu?.kilometrage || 0);
+        console.log("jjjdnsd",dernierPneu.kilometrage );
+        
+        
+        console.log("Km depuis vidange:", kmDepuisVidange, "Km depuis pneu:", kmDepuisPneu);
+        
+        let maintenanceRequise = false;
+        
+        // Vérifier si vidange nécessaire (11000 km)
+        if (kmDepuisVidange >= 11000) {
+          console.log("Vidange nécessaire!");
+          await addMaintenance({
+            camion: camion._id,
+            typeMaintenance: 'Vidange',
+            description: `Vidange automatique - ${kmDepuisVidange} km depuis dernière vidange`,
+            kilometrage: kmActuel,
+            cout: 0,
+            dateMaintenance: new Date().toISOString(),
+            statut: 'Prévu'
+          }, token);
+          maintenanceRequise = true;
+        }
+        else {
+          await changeStatusCamion(camion._id, 'Disponible', token);
+        }
+        
+        // Vérifier si changement pneu nécessaire (10000 km)
+        if (kmDepuisPneu >= 10000) {
+          console.log("Changement pneu nécessaire!");
+          await addMaintenance({
+            camion: camion._id,
+            typeMaintenance: 'Pneu',
+            description: `Changement pneus automatique - ${kmDepuisPneu} km depuis dernier changement`,
+            kilometrage: kmActuel,
+            cout: 0,
+            dateMaintenance: new Date().toISOString(),
+            statut: 'Prévu'
+          }, token);
+          maintenanceRequise = true;
+        }
+        
+        // Changer statut camion si maintenance requise
+        if (maintenanceRequise) {
+          await changeStatusCamion(camion._id, 'En maintenance', token);
+        }
+      }
+      
+      // Vérifier maintenance remorque (pneus uniquement)
+      if (remorque && remorque._id) {
+        const dernierPneuRemorque = maintenances
+          .filter(m => m.remorque?._id === remorque._id && m.typeMaintenance === 'Pneu')
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        
+        const kmDepuisPneuRemorque = kmActuel - (dernierPneuRemorque?.kilometrage || 0);
+        
+        console.log("Km depuis pneu remorque:", kmDepuisPneuRemorque);
+        
+        if (kmDepuisPneuRemorque >= 10000) {
+          console.log("Changement pneu remorque nécessaire!");
+          await addMaintenance({
+            remorque: remorque._id,
+            typeMaintenance: 'Pneu',
+            description: `Changement pneus remorque automatique - ${kmDepuisPneuRemorque} km depuis dernier changement`,
+            kilometrage: kmActuel,
+            cout: 0,
+            dateMaintenance: new Date().toISOString(),
+            statut: 'Prévu'
+          }, token);
+          await changeStatusRemorque(remorque._id, 'En maintenance', token);
+        }
+      }
+    } catch (err) {
+      console.error("Erreur vérification maintenance:", err);
+    }
+  };
+
   const handleStatutChange = async (id, newEtat) => {
+    if (!id) {
+      console.error("ID du trajet manquant");
+      setError("Erreur: ID du trajet manquant");
+      return;
+    }
+    
     try {
       const updated = await changeStatutTrajet(id, newEtat, token);
-      setTrajets(prev => prev.map(t => t._id === id ? updated : t));
+      console.log('nvtrz',updated);
+      
+      // Vérifier que la réponse est valide avant de mettre à jour
+      // L'API retourne { message, trajet }
+      if (updated && updated.trajet && updated.trajet._id) {
+        const trajetMisAJour = updated.trajet;
+        const nouveauxTrajets = trajets.map(t => t._id === id ? trajetMisAJour : t);
+        
+        setTrajets(nouveauxTrajets);
+        setError("");
+        console.log(1);
+        
+        
+        // Si le trajet est terminé, vérifier la maintenance
+        if (newEtat === "Terminer") {
+        // console.log('rrrrrrr',trajetMisAJour);
+
+          await verifierMaintenance(trajetMisAJour);
+          // Recharger pour avoir les statuts à jour
+          await loadData();
+        }
+
+      } else {
+        
+        throw new Error("Réponse invalide du serveur");
+      }
     } catch (err) {
-      setError("Erreur lors du changement de statut");
+      console.error("Erreur changement statut:", err);
+      setError("Erreur lors du changement de statut: " + (err.message || err));
+      // Recharger les données pour s'assurer qu'elles sont à jour
+      loadData();
     }
   };
 
@@ -172,7 +319,7 @@ export default function TrajetDashboard() {
               <label className="form-label">Chauffeur *</label>
               <select className="form-select" value={chauffeur} onChange={e => setChauffeur(e.target.value)}>
                 <option value="">-- Sélectionner --</option>
-                {chauffeurs.filter(c => c.status === 'inactive').map(c => <option key={c._id} value={c._id}>{c.nom} {c.prenom}</option>)}
+                {chauffeurs.filter(c => c.status === 'inactive' && c.role === 'Chauffeur').map(c => <option key={c._id} value={c._id}>{c.nom} {c.prenom}</option>)}
               </select>
             </div>
             <div className="col-md-3">
@@ -205,10 +352,10 @@ export default function TrajetDashboard() {
               <label className="form-label">Date Arrivée</label>
               <input type="datetime-local" className="form-control" value={dateArrivee} onChange={e => setDateArrivee(e.target.value)} />
             </div>
-            <div className="col-md-2">
+            {/* <div className="col-md-2">
               <label className="form-label">Km Départ</label>
               <input type="number" className="form-control" value={kilometrageDepart} onChange={e => setKilometrageDepart(e.target.value)} />
-            </div>
+            </div> */}
             <div className="col-md-2">
               <label className="form-label">Km Arrivée</label>
               <input type="number" className="form-control" value={kilometrageArrivee} onChange={e => setKilometrageArrivee(e.target.value)} />
