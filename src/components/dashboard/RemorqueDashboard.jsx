@@ -76,8 +76,12 @@ export default function RemorqueDashboard() {
   const handleStatusChange = async (id, newStatus) => {
     try {
       
-      const updated = await changeStatusRemorque(id, newStatus, token);
-      setRemorques(prev => prev.map(r => r._id === id ? updated : r));
+      // const updated = await changeStatusRemorque(id, newStatus, token);
+      // setRemorques(prev => prev.map(r => r._id === id ? updated : r));
+
+      await changeStatusRemorque(id, newStatus, token);
+      await loadRemorques();
+      // setRemorques(prev => prev.map(r => r._id === id ? {...r, status: newStatus} : r));
     } catch (err) {
       setError("Erreur lors du changement de statut");
     }

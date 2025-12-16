@@ -40,7 +40,7 @@ export async function deleteRemorque(id, token) {
 }
 
 export async function changeStatusRemorque(id, status, token) {
-  const url = `${BASE}/remorques/${id}/status`;
+  const url = `${BASE}/remorques/status/${id}`;
   console.log('URL complète:', url, 'Status:', status);
   
   const res = await fetch(url, {

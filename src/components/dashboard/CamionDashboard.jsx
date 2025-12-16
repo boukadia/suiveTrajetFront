@@ -127,8 +127,8 @@ export default function CamionDashboard() {
   
   const handleStatusChange = async (id, newStatus) => {
     try {
-      const updated = await changeStatusCamion(id, newStatus, token);
-      setCamions(prev => prev.map(c => c._id === id ? updated : c));
+       await changeStatusCamion(id, newStatus, token);
+       await loadCamions();
       setError("");
     } catch (err) {
       setError("Erreur lors du changement de statut");
